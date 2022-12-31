@@ -2,44 +2,96 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GUI } from 'dat.gui'
 
-let camera, scene, renderer, object;
-let planes, planeObjects, planeHelpers;
-let clock;
 
 const params = {
 
-    animate: true,
-    planeX: {
+    plane01: {
 
-        constant: 0,
+        constant: 1,
         negated: false,
-        displayHelper: false
+        displayHelper: true
 
     },
-    planeY: {
-
-        constant: 0,
-        negated: false,
-        displayHelper: false
-
-    },
-    planeZ: {
-
-        constant: 0,
-        negated: false,
-        displayHelper: false
-
-    }
-
 
 };
+
+const clock = new THREE.Clock();
+
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(36, window.innerWidth / window.innerHeight, 1, 100);
+camera.position.set(4, 5, 4);
+
+// LIGHTS
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+dirLight.position.set(5, 10, 7.5);
+dirLight.castShadow = true;
+dirLight.shadow.camera.right = 2;
+dirLight.shadow.camera.left = - 2;
+dirLight.shadow.camera.top = 2;
+dirLight.shadow.camera.bottom = - 2;
+dirLight.shadow.mapSize.width = 1024;
+dirLight.shadow.mapSize.height = 1024;
+scene.add(dirLight);
+
+// RENDERER
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.shadowMap.enabled = true;
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x263238);
+window.addEventListener('resize', onWindowResize);
+document.body.appendChild(renderer.domElement);
+
+renderer.localClippingEnabled = true;
+
+// CONTROLS
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.minDistance = 2;
+controls.maxDistance = 20;
+controls.update();
+
+// CLIPPING & STENCIL OBJECTS
+const clippingPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1);
+const clipppingPlaneHelper = new THREE.PlaneHelper(clippingPlane, 2, 0xffffff);
+scene.add(clipppingPlaneHelper);
+const objectGroup = new THREE.Group();
+scene.add(objectGroup);
+let planeObject: THREE.Mesh;
+
+// GUI
+const gui = new GUI();
+const myPlane = gui.addFolder('my_plane');
+myPlane.add(params.plane01, 'displayHelper').onChange(v => clipppingPlaneHelper.visible = v);
+myPlane.add(params.plane01, 'constant').min(- 1).max(1).onChange(d => clippingPlane.constant = d);
+myPlane.add(params.plane01, 'negated').onChange(() => {
+    clippingPlane.negate();
+    params.plane01.constant = myPlane.constant;
+});
+myPlane.open();
 
 init();
 animate();
 
-function createPlaneStencilGroup( geometry, plane, renderOrder ) {
+function init() {
+    const sphereGeometry = new THREE.SphereGeometry(0.5, 64, 64);
+    const sphereMaterial = new THREE.MeshStandardMaterial({
+        color: 0xFF7F3F,
+        metalness: 0.1,
+        roughness: 0.75,
+        clippingPlanes: [clippingPlane],
+        clipShadows: true,
+        shadowSide: THREE.DoubleSide,
+    });
+    
+    const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+    sphere.castShadow = true;
+    sphere.renderOrder = 6;
+    objectGroup.add(sphere);
 
-    const group = new THREE.Group();
+    const stencilGroup = new THREE.Group();
     const baseMat = new THREE.MeshBasicMaterial();
     baseMat.depthWrite = false;
     baseMat.depthTest = false;
@@ -50,197 +102,56 @@ function createPlaneStencilGroup( geometry, plane, renderOrder ) {
     // back faces
     const mat0 = baseMat.clone();
     mat0.side = THREE.BackSide;
-    mat0.clippingPlanes = [ plane ];
+    mat0.clippingPlanes = [clippingPlane];
     mat0.stencilFail = THREE.IncrementWrapStencilOp;
     mat0.stencilZFail = THREE.IncrementWrapStencilOp;
     mat0.stencilZPass = THREE.IncrementWrapStencilOp;
 
-    const mesh0 = new THREE.Mesh( geometry, mat0 );
-    mesh0.renderOrder = renderOrder;
-    group.add( mesh0 );
+    const mesh0 = new THREE.Mesh(sphereGeometry, mat0);
+    mesh0.renderOrder = 1;
+    stencilGroup.add(mesh0);
 
     // front faces
     const mat1 = baseMat.clone();
     mat1.side = THREE.FrontSide;
-    mat1.clippingPlanes = [ plane ];
+    mat1.clippingPlanes = [clippingPlane];
     mat1.stencilFail = THREE.DecrementWrapStencilOp;
     mat1.stencilZFail = THREE.DecrementWrapStencilOp;
     mat1.stencilZPass = THREE.DecrementWrapStencilOp;
 
-    const mesh1 = new THREE.Mesh( geometry, mat1 );
-    mesh1.renderOrder = renderOrder;
+    const mesh1 = new THREE.Mesh(sphereGeometry, mat1);
+    mesh1.renderOrder = 1;
 
-    group.add( mesh1 );
+    stencilGroup.add(mesh1);
+    objectGroup.add(stencilGroup);
 
-    return group;
+    const planeMat =
+        new THREE.MeshStandardMaterial({
 
-}
+            color: 0xE91E63,
+            metalness: 0.1,
+            roughness: 0.75,
+            // clippingPlanes: planes.filter( p => p !== plane ),
 
-function init() {
+            stencilWrite: true,
+            stencilRef: 0,
+            stencilFunc: THREE.NotEqualStencilFunc,
+            stencilFail: THREE.ReplaceStencilOp,
+            stencilZFail: THREE.ReplaceStencilOp,
+            stencilZPass: THREE.ReplaceStencilOp,
 
-    clock = new THREE.Clock();
+        });
+    const planeGeom = new THREE.PlaneGeometry(4, 4);
+    planeObject = new THREE.Mesh(planeGeom, planeMat);
+    planeObject.onAfterRender = function (renderer) {
 
-    scene = new THREE.Scene();
+        renderer.clearStencil();
 
-    camera = new THREE.PerspectiveCamera( 36, window.innerWidth / window.innerHeight, 1, 100 );
-    camera.position.set( 2, 2, 2 );
+    };
 
-    scene.add( new THREE.AmbientLight( 0xffffff, 0.5 ) );
+    planeObject.renderOrder = 1.1;
 
-    const dirLight = new THREE.DirectionalLight( 0xffffff, 1 );
-    dirLight.position.set( 5, 10, 7.5 );
-    dirLight.castShadow = true;
-    dirLight.shadow.camera.right = 2;
-    dirLight.shadow.camera.left = - 2;
-    dirLight.shadow.camera.top	= 2;
-    dirLight.shadow.camera.bottom = - 2;
-
-    dirLight.shadow.mapSize.width = 1024;
-    dirLight.shadow.mapSize.height = 1024;
-    scene.add( dirLight );
-
-    planes = [
-        new THREE.Plane( new THREE.Vector3( - 1, 0, 0 ), 0 ),
-        new THREE.Plane( new THREE.Vector3( 0, - 1, 0 ), 0 ),
-        new THREE.Plane( new THREE.Vector3( 0, 0, - 1 ), 0 )
-    ];
-
-    planeHelpers = planes.map( p => new THREE.PlaneHelper( p, 2, 0xffffff ) );
-    planeHelpers.forEach( ph => {
-
-        ph.visible = false;
-        scene.add( ph );
-
-    } );
-
-    const geometry = new THREE.TorusKnotGeometry( 0.4, 0.15, 220, 60 );
-    object = new THREE.Group();
-    scene.add( object );
-
-    // Set up clip plane rendering
-    planeObjects = [];
-    const planeGeom = new THREE.PlaneGeometry( 4, 4 );
-
-    for ( let i = 0; i < 3; i ++ ) {
-
-        const poGroup = new THREE.Group();
-        const plane = planes[ i ];
-        const stencilGroup = createPlaneStencilGroup( geometry, plane, i + 1 );
-
-        // plane is clipped by the other clipping planes
-        const planeMat =
-            new THREE.MeshStandardMaterial( {
-
-                color: 0xE91E63,
-                metalness: 0.1,
-                roughness: 0.75,
-                clippingPlanes: planes.filter( p => p !== plane ),
-
-                stencilWrite: true,
-                stencilRef: 0,
-                stencilFunc: THREE.NotEqualStencilFunc,
-                stencilFail: THREE.ReplaceStencilOp,
-                stencilZFail: THREE.ReplaceStencilOp,
-                stencilZPass: THREE.ReplaceStencilOp,
-
-            } );
-        const po = new THREE.Mesh( planeGeom, planeMat );
-        po.onAfterRender = function ( renderer ) {
-
-            renderer.clearStencil();
-
-        };
-
-        po.renderOrder = i + 1.1;
-
-        object.add( stencilGroup );
-        poGroup.add( po );
-        planeObjects.push( po );
-        scene.add( poGroup );
-
-    }
-
-    const material = new THREE.MeshStandardMaterial( {
-
-        color: 0xFFC107,
-        metalness: 0.1,
-        roughness: 0.75,
-        clippingPlanes: planes,
-        clipShadows: true,
-        shadowSide: THREE.DoubleSide,
-
-    } );
-
-    // add the color
-    const clippedColorFront = new THREE.Mesh( geometry, material );
-    clippedColorFront.castShadow = true;
-    clippedColorFront.renderOrder = 6;
-    object.add( clippedColorFront );
-
-
-    const ground = new THREE.Mesh(
-        new THREE.PlaneGeometry( 9, 9, 1, 1 ),
-        new THREE.ShadowMaterial( { color: 0x000000, opacity: 0.25, side: THREE.DoubleSide } )
-    );
-
-    ground.rotation.x = - Math.PI / 2; // rotates X/Y to X/Z
-    ground.position.y = - 1;
-    ground.receiveShadow = true;
-    scene.add( ground );
-
-    // Renderer
-    renderer = new THREE.WebGLRenderer( { antialias: true } );
-    renderer.shadowMap.enabled = true;
-    renderer.setPixelRatio( window.devicePixelRatio );
-    renderer.setSize( window.innerWidth, window.innerHeight );
-    renderer.setClearColor( 0x263238 );
-    window.addEventListener( 'resize', onWindowResize );
-    document.body.appendChild( renderer.domElement );
-
-    renderer.localClippingEnabled = true;
-
-    // Controls
-    const controls = new OrbitControls( camera, renderer.domElement );
-    controls.minDistance = 2;
-    controls.maxDistance = 20;
-    controls.update();
-
-    // GUI
-    const gui = new GUI();
-    gui.add( params, 'animate' );
-
-    const planeX = gui.addFolder( 'planeX' );
-    planeX.add( params.planeX, 'displayHelper' ).onChange( v => planeHelpers[ 0 ].visible = v );
-    planeX.add( params.planeX, 'constant' ).min( - 1 ).max( 1 ).onChange( d => planes[ 0 ].constant = d );
-    planeX.add( params.planeX, 'negated' ).onChange( () => {
-
-        planes[ 0 ].negate();
-        params.planeX.constant = planes[ 0 ].constant;
-
-    } );
-    planeX.open();
-
-    const planeY = gui.addFolder( 'planeY' );
-    planeY.add( params.planeY, 'displayHelper' ).onChange( v => planeHelpers[ 1 ].visible = v );
-    planeY.add( params.planeY, 'constant' ).min( - 1 ).max( 1 ).onChange( d => planes[ 1 ].constant = d );
-    planeY.add( params.planeY, 'negated' ).onChange( () => {
-
-        planes[ 1 ].negate();
-        params.planeY.constant = planes[ 1 ].constant;
-
-    } );
-    planeY.open();
-
-    const planeZ = gui.addFolder( 'planeZ' );
-    planeZ.add( params.planeZ, 'displayHelper' ).onChange( v => planeHelpers[ 2 ].visible = v );
-    planeZ.add( params.planeZ, 'constant' ).min( - 1 ).max( 1 ).onChange( d => planes[ 2 ].constant = d );
-    planeZ.add( params.planeZ, 'negated' ).onChange( () => {
-
-        planes[ 2 ].negate();
-        params.planeZ.constant = planes[ 2 ].constant;
-
-    } );
-    planeZ.open();
+    scene.add(planeObject);
 
 }
 
@@ -249,7 +160,7 @@ function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
 
-    renderer.setSize( window.innerWidth, window.innerHeight );
+    renderer.setSize(window.innerWidth, window.innerHeight);
 
 }
 
@@ -257,28 +168,17 @@ function animate() {
 
     const delta = clock.getDelta();
 
-    requestAnimationFrame( animate );
+    requestAnimationFrame(animate);
 
-    if ( params.animate ) {
-
-        object.rotation.x += delta * 0.5;
-        object.rotation.y += delta * 0.2;
-
-    }
-
-    for ( let i = 0; i < planeObjects.length; i ++ ) {
-
-        const plane = planes[ i ];
-        const po = planeObjects[ i ];
-        plane.coplanarPoint( po.position );
-        po.lookAt(
-            po.position.x - plane.normal.x,
-            po.position.y - plane.normal.y,
-            po.position.z - plane.normal.z,
+    if (planeObject) {
+        clippingPlane.coplanarPoint(planeObject.position);
+        planeObject.lookAt(
+            planeObject.position.x - clippingPlane.normal.x,
+            planeObject.position.y - clippingPlane.normal.y,
+            planeObject.position.z - clippingPlane.normal.z,
         );
-
     }
 
-    renderer.render( scene, camera );
+    renderer.render(scene, camera);
 
 }
