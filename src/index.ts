@@ -60,8 +60,51 @@ controls.update();
 // GUI
 const gui = new GUI();
 
-init2();
+init3();
 animate();
+
+function init3 () {
+    const planeGeom = new THREE.PlaneGeometry();
+
+    const stencilMat = new THREE.MeshPhongMaterial({ color: 'blue' });
+    stencilMat.colorWrite = false;
+    stencilMat.depthWrite = false;
+    stencilMat.stencilWrite = true;
+    stencilMat.stencilRef = 1;
+    stencilMat.stencilFunc = THREE.AlwaysStencilFunc;
+    // stencilMat.stencilZFail = THREE.ReplaceStencilOp;
+    // stencilMat.stencilFail = THREE.ReplaceStencilOp;
+    stencilMat.stencilZPass = THREE.ReplaceStencilOp;
+    const stencilMesh = new THREE.Mesh(planeGeom, stencilMat);
+    const stencilHelper = new THREE.BoxHelper(stencilMesh, 'white');
+    scene.add(stencilHelper);
+    scene.add(stencilMesh);
+
+    const greenMat = new THREE.MeshPhongMaterial({ color: 'green' });
+    greenMat.stencilWrite = true;
+    greenMat.stencilRef = 1;
+    greenMat.stencilFunc = THREE.NotEqualStencilFunc;
+    const greenMesh = new THREE.Mesh(planeGeom, greenMat);
+    greenMesh.position.x = -0.5;
+    greenMesh.position.y = 0.5;
+    scene.add(greenMesh);
+
+    const yellowMat = new THREE.MeshPhongMaterial({ color: 'yellow' });
+    yellowMat.stencilWrite = true;
+    yellowMat.stencilRef = 1;
+    yellowMat.stencilFunc = THREE.EqualStencilFunc;
+    const yellowMesh = new THREE.Mesh(planeGeom, yellowMat);
+    yellowMesh.position.x = 0.5;
+    yellowMesh.position.y = -0.5;
+    scene.add(yellowMesh);
+
+    const stencilParams = gui.addFolder('stencilParams');
+    stencilParams.add(params.stencilMesh, 'z').min(- 1).max(1).onChange(d => {
+            stencilMesh.position.z = d
+            stencilHelper.update();
+    });
+    stencilParams.open();
+}
 
 function init() {
     const sphereGeometry = new THREE.SphereGeometry(1, 64, 64);
