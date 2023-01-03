@@ -27,7 +27,7 @@ const camera = new THREE.PerspectiveCamera(36, window.innerWidth / window.innerH
 camera.position.set(4, 5, 4);
 
 // LIGHTS
-scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+scene.add(new THREE.AmbientLight(0xffffff, 0.9));
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 1);
 dirLight.position.set(5, 10, 7.5);
@@ -45,7 +45,7 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.shadowMap.enabled = true;
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setClearColor(0x263238);
+renderer.setClearColor(0x453C67);
 renderer.localClippingEnabled = true;
 window.addEventListener('resize', onWindowResize);
 document.body.appendChild(renderer.domElement);
@@ -62,6 +62,49 @@ const gui = new GUI();
 
 init3();
 animate();
+
+function init4() {
+
+    const addSide = (objectGeom: THREE.BufferGeometry, objectColor: string, 
+        stencilRef: number, planePos: THREE.Vector3, planeRot: THREE.Vector3 ) => {
+
+            const planeGeom = new THREE.PlaneGeometry();
+            const stencilMat = new THREE.MeshPhongMaterial({ color: 'white' });
+            stencilMat.depthWrite = false;
+            stencilMat.stencilWrite = true;
+            stencilMat.stencilRef = stencilRef;
+            stencilMat.stencilFunc = THREE.AlwaysStencilFunc;
+            stencilMat.stencilZPass = THREE.ReplaceStencilOp;
+            const stencilMesh = new THREE.Mesh(planeGeom, stencilMat);
+            stencilMesh.position.copy(planePos);
+            stencilMesh.rotation.x = planeRot.x;
+            stencilMesh.rotation.y = planeRot.y;
+            stencilMesh.rotation.z = planeRot.z;
+            stencilMesh.scale.multiplyScalar(0.9);
+            scene.add(stencilMesh);
+        
+            const objectMat = new THREE.MeshPhongMaterial({ color: objectColor});
+            objectMat.stencilWrite = true;
+            objectMat.stencilRef = stencilRef;
+            objectMat.stencilFunc = THREE.EqualStencilFunc;
+            const object = new THREE.Mesh(objectGeom, objectMat);
+            scene.add(object);
+    }
+
+    addSide(new THREE.ConeGeometry(0.25, 0.5, 4), 'red', 1, new THREE.Vector3(0,0,0.5), new THREE.Vector3(0,0,0));
+    addSide(new THREE.CylinderGeometry(0.15, 0.15, 0.5), 'yellow', 2, new THREE.Vector3(0,0.5,0), new THREE.Vector3(- Math.PI / 2,0,0));
+    addSide(new THREE.OctahedronGeometry(0.25), 'green', 3, new THREE.Vector3(0,-0.5,0), new THREE.Vector3( Math.PI / 2,0,0));
+    addSide(new THREE.TorusGeometry(0.25, 0.1), 'blue', 4, new THREE.Vector3(0,0,-0.5), new THREE.Vector3( Math.PI,0,0));
+    addSide(new THREE.ConeGeometry(0.25, 0.5), 'orange', 5, new THREE.Vector3(-0.5,0,0), new THREE.Vector3( 0, -Math.PI / 2,0));
+    addSide(new THREE.BoxGeometry(0.5, 0.5, 0.5), 'brown', 6, new THREE.Vector3(0.5,0,0), new THREE.Vector3( 0, Math.PI / 2,0));
+
+    const boxBorderMat = new THREE.MeshPhongMaterial({ color: 0x1A120B });
+    boxBorderMat.stencilWrite = true;
+    boxBorderMat.stencilRef = 0;
+    boxBorderMat.stencilFunc = THREE.EqualStencilFunc;
+    const boxBorderGeom = new THREE.BoxGeometry();
+    scene.add(new THREE.Mesh(boxBorderGeom, boxBorderMat));
+}
 
 function init3 () {
     const planeGeom = new THREE.PlaneGeometry();
