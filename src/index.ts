@@ -125,23 +125,23 @@ function initPlanes () {
     scene.add(stencilHelper);
     scene.add(stencilMesh);
 
-    const greenMat = new THREE.MeshPhongMaterial({ color: 'blue' });
-    greenMat.stencilWrite = true;
-    greenMat.stencilRef = 1;
-    greenMat.stencilFunc = THREE.NotEqualStencilFunc;
-    const greenMesh = new THREE.Mesh(planeGeom, greenMat);
-    greenMesh.position.x = -0.5;
-    greenMesh.position.y = 0.5;
-    scene.add(greenMesh);
+    const blueMat = new THREE.MeshPhongMaterial({ color: 'blue' });
+    blueMat.stencilWrite = true;
+    blueMat.stencilRef = 1;
+    blueMat.stencilFunc = THREE.NotEqualStencilFunc;
+    const blueMesh = new THREE.Mesh(planeGeom, blueMat);
+    blueMesh.position.x = -0.5;
+    blueMesh.position.y = 0.5;
+    scene.add(blueMesh);
 
-    const yellowMat = new THREE.MeshPhongMaterial({ color: 'red' });
-    yellowMat.stencilWrite = true;
-    yellowMat.stencilRef = 1;
-    yellowMat.stencilFunc = THREE.EqualStencilFunc;
-    const yellowMesh = new THREE.Mesh(planeGeom, yellowMat);
-    yellowMesh.position.x = 0.5;
-    yellowMesh.position.y = -0.5;
-    scene.add(yellowMesh);
+    const redMat = new THREE.MeshPhongMaterial({ color: 'red' });
+    redMat.stencilWrite = true;
+    redMat.stencilRef = 1;
+    redMat.stencilFunc = THREE.EqualStencilFunc;
+    const redMesh = new THREE.Mesh(planeGeom, redMat);
+    redMesh.position.x = 0.5;
+    redMesh.position.y = -0.5;
+    scene.add(redMesh);
 
     const stencilParams = gui.addFolder('stencilParams');
     stencilParams.add(params.stencilMesh, 'z').min(- 1).max(1).onChange(d => {
