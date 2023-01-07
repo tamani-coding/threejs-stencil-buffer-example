@@ -111,7 +111,7 @@ function initCube() {
 function initPlanes () {
     const planeGeom = new THREE.PlaneGeometry();
 
-    const stencilMat = new THREE.MeshPhongMaterial({ color: 'blue' });
+    const stencilMat = new THREE.MeshPhongMaterial({ color: 'green' });
     stencilMat.colorWrite = false;
     stencilMat.depthWrite = false;
     stencilMat.stencilWrite = true;
@@ -125,7 +125,7 @@ function initPlanes () {
     scene.add(stencilHelper);
     scene.add(stencilMesh);
 
-    const greenMat = new THREE.MeshPhongMaterial({ color: 'green' });
+    const greenMat = new THREE.MeshPhongMaterial({ color: 'blue' });
     greenMat.stencilWrite = true;
     greenMat.stencilRef = 1;
     greenMat.stencilFunc = THREE.NotEqualStencilFunc;
@@ -134,7 +134,7 @@ function initPlanes () {
     greenMesh.position.y = 0.5;
     scene.add(greenMesh);
 
-    const yellowMat = new THREE.MeshPhongMaterial({ color: 'yellow' });
+    const yellowMat = new THREE.MeshPhongMaterial({ color: 'red' });
     yellowMat.stencilWrite = true;
     yellowMat.stencilRef = 1;
     yellowMat.stencilFunc = THREE.EqualStencilFunc;
