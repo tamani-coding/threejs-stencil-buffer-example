@@ -68,6 +68,7 @@ function initCube() {
     const addCubeFace = (objectGeom: THREE.BufferGeometry, objectColor: string, 
         stencilRef: number, planePos: THREE.Vector3, planeRot: THREE.Vector3 ) => {
 
+            // CUBE FACE
             const planeGeom = new THREE.PlaneGeometry();
             const stencilMat = new THREE.MeshPhongMaterial({ color: 'white' });
             stencilMat.depthWrite = false;
@@ -83,6 +84,7 @@ function initCube() {
             stencilMesh.scale.multiplyScalar(0.9);
             scene.add(stencilMesh);
         
+            // OBJECT INSIDE CUBE
             const objectMat = new THREE.MeshPhongMaterial({ color: objectColor});
             objectMat.stencilWrite = true;
             objectMat.stencilRef = stencilRef;
