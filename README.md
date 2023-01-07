@@ -1,5 +1,5 @@
-# threejs-clipping-stencil-example
-threejs-clipping-stencil-example
+# threejs-stencil-buffer-example
+threejs-stencil-buffer-example
 
 
 Try the [Stackblitz](https://stackblitz.com/github/tamani-coding/threejs-stencil-buffer-example) 
